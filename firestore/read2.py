@@ -6,8 +6,9 @@ cred = credentials.Certificate("serviceAccountKey.json")
 firebase_admin.initialize_app(cred)
 
 db = firestore.client()
-
 collection_ref = db.collection("靜宜資管")
-docs = collection_ref.order_by("mail", direction=firestore.Query.DESCENDING).limit(3).get()
+
+docs = collection_ref.order_by("lab", direction=firestore.Query.DESCENDING).get()
+
 for doc in docs:
     print("文件內容：{}".format(doc.to_dict()))
