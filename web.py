@@ -1,6 +1,22 @@
 import random
 from flask import Flask, render_template, request
 from datetime import datetime
+import os
+import json
+import firebase_admin
+from firebase_admin import credentials, firestore
+
+if not firebase_admin._apps:   # 防止重複初始化
+    if os.path.exists('serviceAccountKey.json'):
+        # 本地環境
+        cred = credentials.Certificate('serviceAccountKey.json')
+    else:
+        # 雲端環境
+        firebase_config = os.getenv('FIREBASE_CONFIG')
+        cred_dict = json.loads(firebase_config)
+        cred = credentials.Certificate(cred_dict)
+
+    firebase_admin.initialize_app(cred)
 app = Flask(__name__)
 
 @app.route("/")
@@ -13,7 +29,45 @@ def index():
     link += "<a href=/account>POST傳值(帳號密碼)</a><hr>"
     link += "<a href=/math>數學運算</a><hr>"
     link += "<a href=/cup>擲茭</a><hr>"
+    link += "<a href=/read3>讀取Firestore資料</a><hr>"
+    link += "<a href='/search'>老師搜尋</a>"
     return link
+
+@app.route("/search", methods=["GET", "POST"])
+def search():
+    Result = ""
+
+    if request.method == "POST":
+        keyword = request.form.get("name", "")
+
+        db = firestore.client()
+        collection_ref = db.collection("靜宜資管")    
+        docs = collection_ref.get()
+
+        for doc in docs:
+            data = doc.to_dict()
+            teacher = data.get("name", "")
+            lab = data.get("lab", "")
+
+            # 模糊搜尋
+            if keyword in teacher:
+                Result += f"老師：{teacher}，研究室：{lab}<br>"
+
+        if Result == "":
+            Result = "查無資料"
+
+    return render_template("search.html", result=Result)
+
+@app.route("/read3")
+def read3():
+    Result = ""
+    db = firestore.client()
+    collection_ref = db.collection("靜宜資管")    
+    docs = collection_ref.order_by("lab", direction=firestore.Query.DESCENDING).limit(4).get()
+    for doc in docs:         
+        Result += str(doc.to_dict()) + "<br>"    
+
+    return Result
 
 @app.route("/mis")
 def course():

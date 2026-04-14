@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>老師查詢</title>
+</head>
+<body>
+    <h1>老師搜尋系統</h1>
+
+    <form method="POST">
+        請輸入老師姓名關鍵字：
+        <input type="text" name="name">
+        <input type="submit" value="搜尋">
+    </form>
+
+    <hr>
+
+    {% if result %}
+        <h3>查詢結果：</h3>
+        {{ result|safe }}
+    {% endif %}
+
+    <br><a href="/">回首頁</a>
+</body>
+</html>
