@@ -1,9 +1,11 @@
 import random
-from flask import Flask, render_template, request
-from datetime import datetime
 import os
 import json
 import firebase_admin
+import requests
+from bs4 import BeautifulSoup
+from flask import Flask, render_template, request
+from datetime import datetime
 from firebase_admin import credentials, firestore
 
 if not firebase_admin._apps:   # 防止重複初始化
@@ -30,8 +32,73 @@ def index():
     link += "<a href=/math>數學運算</a><hr>"
     link += "<a href=/cup>擲茭</a><hr>"
     link += "<a href=/read3>讀取Firestore資料</a><hr>"
-    link += "<a href='/search'>老師搜尋</a>"
+    link += "<a href='/search'>老師搜尋</a><hr>"
+    link += "<a href='/movie'>查詢即將上映電影</a><hr>"
     return link
+
+@app.route("/movie", methods=["GET", "POST"])
+def movie():
+    db = firestore.client()
+
+    # 👉 第一次進來（GET）→ 自動爬蟲
+    if request.method == "GET":
+        url = "http://www.atmovies.com.tw/movie/next/"
+        Data = requests.get(url)
+        Data.encoding = "utf-8"
+
+        sp = BeautifulSoup(Data.text, "html.parser")
+        result = sp.select(".filmListAllX li")
+
+        for item in result:
+            try:
+                picture = item.find("img").get("src").strip()
+
+                # ⭐ 關鍵修正：補完整網址
+                if picture.startswith("/"):
+                    picture = "http://www.atmovies.com.tw" + picture
+
+                title = item.find("div", class_="filmtitle").text.strip()
+
+                link = item.find("a").get("href")
+                movie_id = link.replace("/", "").replace("movie", "")
+
+                hyperlink = "http://www.atmovies.com.tw" + link
+
+                show = item.find("div", class_="runtime").text
+                show = show.replace("上映日期：", "").replace("片長：", "").replace("分", "")
+
+                showDate = show[0:10]
+                showLength = show[13:]
+
+                doc = {
+                    "title": title,
+                    "picture": picture,
+                    "hyperlink": hyperlink,
+                    "showDate": showDate,
+                    "showLength": showLength
+                }
+
+                db.collection("電影").document(movie_id).set(doc)
+
+            except Exception as e:
+                print("錯誤:", e)
+
+        return render_template("movie.html", movies=None)
+
+    # 👉 查詢（POST）
+    else:
+        keyword = request.form["MovieTitle"]
+
+        docs = db.collection("電影").get()
+
+        movies = []
+        for doc in docs:
+            data = doc.to_dict()
+
+            if keyword in data.get("title", ""):
+                movies.append(data)
+
+        return render_template("movie.html", movies=movies)
 
 @app.route("/search", methods=["GET", "POST"])
 def search():
