@@ -34,7 +34,68 @@ def index():
     link += "<a href=/read3>讀取Firestore資料</a><hr>"
     link += "<a href='/search'>老師搜尋</a><hr>"
     link += "<a href='/movie'>查詢即將上映電影</a><hr>"
+    link += "<a href='/movie2'>爬取電影進資料庫</a><hr>"
+    link += "<a href='/movie3'>查詢電影資料庫</a><hr>"
     return link
+
+@app.route("/movie3", methods=["GET", "POST"])
+def movie3():
+    db = firestore.client()
+    results = []
+    keyword = ""
+    
+    if request.method == "POST":
+        keyword = request.form.get("keyword")
+        collection_ref = db.collection("電影2A")
+        docs = collection_ref.get()
+
+        for doc in docs:
+            movie = doc.to_dict()
+            if keyword in movie["title"]:
+                results.append({
+                    "title":  movie["title"],
+                    "picture": movie["picture"],
+                    "hyperlink": movie["hyperlink"],
+                    "showDate": movie["showDate"],
+                    "showLength": movie["showLength"],
+                    "lastUpdate": movie["lastUpdate"]
+                })
+
+    return render_template("movie3.html", results=results, keyword=keyword)
+
+@app.route("/movie2")
+def movie2():
+    url = "http://www.atmovies.com.tw/movie/next/"
+    Data = requests.get(url)
+    Data.encoding = "utf-8"
+    sp = BeautifulSoup(Data.text, "html.parser")
+    result=sp.select(".filmListAllX li")
+    lastUpdate = sp.find("div", class_="smaller09").text[5:]
+
+    for item in result:
+        picture = item.find("img").get("src").replace(" ", "")
+        title = item.find("div", class_="filmtitle").text
+        movie_id = item.find("div", class_="filmtitle").find("a").get("href").replace("/", "").replace("movie", "")
+        hyperlink = "http://www.atmovies.com.tw" + item.find("div", class_="filmtitle").find("a").get("href")
+        show = item.find("div", class_="runtime").text.replace("上映日期：", "")
+        show = show.replace("片長：", "")
+        show = show.replace("分", "")
+        showDate = show[0:10]
+        showLength = show[13:]
+
+        doc = {
+            "title": title,
+            "picture": picture,
+            "hyperlink": hyperlink,
+            "showDate": showDate,
+            "showLength": showLength,
+            "lastUpdate": lastUpdate
+        }
+
+        db = firestore.client()
+        doc_ref = db.collection("電影2A").document(movie_id)
+        doc_ref.set(doc)    
+    return "近期上映電影已爬蟲及存檔完畢，網站最近更新日期為：" + lastUpdate 
 
 @app.route("/movie", methods=["GET", "POST"])
 def movie():
