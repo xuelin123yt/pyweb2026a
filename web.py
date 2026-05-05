@@ -36,7 +36,68 @@ def index():
     link += "<a href='/movie'>查詢即將上映電影</a><hr>"
     link += "<a href='/movie2'>爬取電影進資料庫</a><hr>"
     link += "<a href='/movie3'>查詢電影資料庫</a><hr>"
+    link += "<a href='/traffic'>查詢易肇事路口</a><hr>"
+    link += "<a href='/weather'>天氣查詢</a><hr>"
     return link
+
+@app.route("/weather", methods=["GET", "POST"])
+def weather():
+    result = None
+    city = ""
+
+    if request.method == "POST":
+        city = request.form.get("city", "")
+        city = city.replace("台", "臺")
+
+        token = "rdec-key-123-45678-011121314"
+        url = "https://opendata.cwa.gov.tw/api/v1/rest/datastore/F-C0032-001?Authorization=" + token + "&format=JSON&locationName=" + city
+
+        Data = requests.get(url)
+
+        # 👉 防止 API 爆掉
+        if Data.status_code == 200:
+            try:
+                Weather = json.loads(Data.text)["records"]["location"][0]["weatherElement"][0]["time"][0]["parameter"]["parameterName"]
+                Rain = json.loads(Data.text)["records"]["location"][0]["weatherElement"][1]["time"][0]["parameter"]["parameterName"]
+
+                result = Weather + "，降雨機率：" + Rain + "%"
+
+            except:
+                result = "資料解析失敗"
+        else:
+            result = "API錯誤：" + str(Data.status_code)
+
+    return render_template("weather.html", result=result, city=city)
+
+@app.route("/traffic", methods=["GET", "POST"])
+def traffic():
+    results = []
+    keyword = ""
+
+    if request.method == "POST":
+        keyword = request.form.get("road", "")
+
+        url = "https://newdatacenter.taichung.gov.tw/api/v1/no-auth/resource.download?rid=a1b899c0-511f-4e3d-b22b-814982a97e41"
+        headers = {"User-Agent": "Mozilla/5.0"}
+
+        response = requests.get(url, headers=headers)
+
+        if response.status_code == 200:
+            data = response.json()
+
+            for item in data:
+                road = item.get("路口名稱", "")
+                
+                # 模糊搜尋
+                if keyword in road:
+                    results.append({
+                        "road": road,
+                        "count": item.get("總件數", ""),
+                        "death": item.get("死亡人數", ""),
+                        "injury": item.get("受傷人數", "")
+                    })
+
+    return render_template("traffic.html", results=results, keyword=keyword)
 
 @app.route("/movie3", methods=["GET", "POST"])
 def movie3():
