@@ -7,6 +7,7 @@ from bs4 import BeautifulSoup
 from flask import Flask, render_template, request, make_response, jsonify
 from datetime import datetime
 from firebase_admin import credentials, firestore
+from google import genai
 
 if not firebase_admin._apps:   # 防止重複初始化
     if os.path.exists('serviceAccountKey.json'):
@@ -20,6 +21,7 @@ if not firebase_admin._apps:   # 防止重複初始化
 
     firebase_admin.initialize_app(cred)
 app = Flask(__name__)
+client = genai.Client()  # 自動讀取環境變數 GEMINI_API_KEY
 
 @app.route("/")
 def index():
@@ -40,8 +42,28 @@ def index():
     link += "<a href='/weather'>天氣查詢</a><hr>"
     link += "<a href='/rate'>本週新片進DB</a><hr>"
     link += "<a href='/demo'>聊天機器人(需用PC才能看)</a><hr>"
+    link += "<a href='/ask'>詢問 Gemini AI</a><hr>"
     return link
 
+@app.route('/ask', methods=['GET', 'POST']) 
+def ask():
+    if request.method == "POST":
+        user_prompt = request.form.get('prompt', '')
+        if not user_prompt:
+            return "請輸入內容", 400
+        try:
+            response = client.models.generate_content(
+                model='gemini-3.5-flash',
+                contents=user_prompt,
+            )
+            return response.text
+        except Exception as e:
+            return f"發生錯誤: {str(e)}", 500
+
+    else:    
+        # 當使用者直接打開網頁 (GET) 時，顯示輸入框畫面
+        return render_template("ask.html")
+    
 @app.route("/demo")
 def demo():
     return render_template("demo.html")
@@ -133,6 +155,42 @@ def webhook3():
         
         info += result
     
+    return make_response(jsonify({"fulfillmentText": info}))
+
+@app.route("/webhook7", methods=["POST"])
+def webhook7():
+    req = request.get_json(force=True)
+    action = req.get("queryResult").get("action")
+
+    if action == "rateChoice":
+        rate = req.get("queryResult").get("parameters").get("rate")
+        info = "您選擇的電影分級是：" + rate + "，相關電影：\n"
+        db = firestore.client()
+        docs = db.collection("本週新片含分級").get()
+        result = ""
+        for doc in docs:
+            d = doc.to_dict()
+            if rate in d["rate"]:
+                result += "片名：" + d["title"] + "\n"
+                result += "介紹：" + d["hyperlink"] + "\n\n"
+        if result == "":
+            result = "本週沒有符合該分級的電影"
+        info += result
+
+    elif action == "input.unknown":
+        # Fallback → 丟給 Gemini
+        user_input = req["queryResult"]["queryText"]
+        try:
+            response = client.models.generate_content(
+                model="gemini-3.5-flash",
+                contents=user_input,
+            )
+            info = response.text
+        except Exception as e:
+            info = f"AI 發生錯誤：{str(e)}"
+    else:
+        info = "我不太明白你的意思"
+
     return make_response(jsonify({"fulfillmentText": info}))
 
 @app.route("/weather", methods=["GET", "POST"])
