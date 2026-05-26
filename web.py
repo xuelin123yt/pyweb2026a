@@ -8,6 +8,7 @@ from flask import Flask, render_template, request, make_response, jsonify
 from datetime import datetime
 from firebase_admin import credentials, firestore
 from google import genai
+from google.genai import types
 
 if not firebase_admin._apps:   # 防止重複初始化
     if os.path.exists('serviceAccountKey.json'):
@@ -52,16 +53,15 @@ def ask():
         if not user_prompt:
             return "請輸入內容", 400
         try:
-            response = client.models.generate_content(
+            c = genai.Client(api_key=os.environ.get("GEMINI_API_KEY"))
+            response = c.models.generate_content(
                 model='gemini-3.5-flash',
                 contents=user_prompt,
             )
             return response.text
         except Exception as e:
             return f"發生錯誤: {str(e)}", 500
-
     else:    
-        # 當使用者直接打開網頁 (GET) 時，顯示輸入框畫面
         return render_template("ask.html")
     
 @app.route("/demo")
@@ -181,13 +181,19 @@ def webhook7():
         user_input = req["queryResult"]["queryText"]
         try:
             c = genai.Client(api_key=os.environ.get("GEMINI_API_KEY"))
+            ai_config = types.GenerateContentConfig(
+                max_output_tokens=128
+            )
             response = c.models.generate_content(
                 model="gemini-3.5-flash",
                 contents=user_input,
+                config=ai_config,
             )
             info = response.text
         except Exception as e:
             info = f"AI 發生錯誤：{str(e)}"
+    else:
+        info = "我不太明白你的意思"
 
     return make_response(jsonify({"fulfillmentText": info}))
 
