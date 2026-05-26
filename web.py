@@ -190,6 +190,8 @@ def webhook7():
                 config=ai_config,
             )
             info = response.text
+            # 去掉 Markdown 符號
+            info = info.replace("**", "").replace("##", "").replace("###", "")
         except Exception as e:
             info = f"AI 發生錯誤：{str(e)}"
     else:
