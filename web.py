@@ -178,18 +178,16 @@ def webhook7():
         info += result
 
     elif action == "input.unknown":
-        # Fallback → 丟給 Gemini
         user_input = req["queryResult"]["queryText"]
         try:
-            response = client.models.generate_content(
+            c = genai.Client(api_key=os.environ.get("GEMINI_API_KEY"))
+            response = c.models.generate_content(
                 model="gemini-3.5-flash",
                 contents=user_input,
             )
             info = response.text
         except Exception as e:
             info = f"AI 發生錯誤：{str(e)}"
-    else:
-        info = "我不太明白你的意思"
 
     return make_response(jsonify({"fulfillmentText": info}))
 
