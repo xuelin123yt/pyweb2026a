@@ -190,6 +190,9 @@ def webhook7():
                 config=ai_config,
             )
             info = response.text.replace("**", "").replace("##", "").replace("###", "")
+            # 強制截斷在60字
+            if len(info) > 60:
+                info = info[:60] + "..."
         except Exception as e:
             info = f"AI 發生錯誤：{str(e)}"
 
