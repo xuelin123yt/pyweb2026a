@@ -182,20 +182,16 @@ def webhook7():
         try:
             c = genai.Client(api_key=os.environ.get("GEMINI_API_KEY"))
             ai_config = types.GenerateContentConfig(
-                max_output_tokens=128
+                max_output_tokens=400
             )
             response = c.models.generate_content(
                 model="gemini-3.5-flash",
-                contents=user_input,
+                contents=f"請用純文字、不要用Markdown格式，簡短回答（100字內）：{user_input}",
                 config=ai_config,
             )
-            info = response.text
-            # 去掉 Markdown 符號
-            info = info.replace("**", "").replace("##", "").replace("###", "")
+            info = response.text.replace("**", "").replace("##", "").replace("###", "")
         except Exception as e:
             info = f"AI 發生錯誤：{str(e)}"
-    else:
-        info = "我不太明白你的意思"
 
     return make_response(jsonify({"fulfillmentText": info}))
 
