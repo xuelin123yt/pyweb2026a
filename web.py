@@ -186,7 +186,7 @@ def webhook7():
             )
             response = c.models.generate_content(
                 model="gemini-3.5-flash",
-                contents=f"請用純文字、不要用Markdown格式，簡短回答（100字內）：{user_input}",
+                contents=f"請用純文字、不要用Markdown，用一句話（50字內）回答：{user_input}",
                 config=ai_config,
             )
             info = response.text.replace("**", "").replace("##", "").replace("###", "")
