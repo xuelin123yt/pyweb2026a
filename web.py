@@ -164,7 +164,7 @@ def webhook3():
                 c = genai.Client(api_key=os.environ.get("GEMINI_API_KEY"))
                 ai_config = types.GenerateContentConfig(max_output_tokens=400)
                 response = c.models.generate_content(
-                    model="gemini-1.5-flash",
+                    model="gemini-3.1-flash-lite",
                     contents=f"請用純文字、不要用Markdown，用一句話（50字內）回答：{user_input}",
                     config=ai_config,
                 )
