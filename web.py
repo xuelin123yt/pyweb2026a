@@ -154,7 +154,26 @@ def webhook3():
             result = "本週沒有符合該分級的電影"
         
         info += result
-    
+
+    elif action == "input.unknown":
+        user_input = req["queryResult"]["queryText"]
+        try:
+            c = genai.Client(api_key=os.environ.get("GEMINI_API_KEY"))
+            ai_config = types.GenerateContentConfig(max_output_tokens=400)
+            response = c.models.generate_content(
+                model="gemini-2.0-flash",
+                contents=f"請用純文字、不要用Markdown，用一句話（100字）回答：{user_input}",
+                config=ai_config,
+            )
+            info = response.text.replace("**", "").replace("##", "").replace("###", "")
+            if len(info) > 60:
+                info = info[:60] + "..."
+        except Exception as e:
+            info = f"AI 發生錯誤：{str(e)}"
+
+    else:
+        info = "抱歉，我不太理解您的問題，請問您想查詢哪種分級的電影呢？"
+
     return make_response(jsonify({"fulfillmentText": info}))
 
 @app.route("/webhook7", methods=["POST"])
