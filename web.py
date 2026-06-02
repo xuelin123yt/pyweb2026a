@@ -157,19 +157,26 @@ def webhook3():
 
     elif action == "input.unknown":
         user_input = req["queryResult"]["queryText"]
-        try:
-            c = genai.Client(api_key=os.environ.get("GEMINI_API_KEY"))
-            ai_config = types.GenerateContentConfig(max_output_tokens=400)
-            response = c.models.generate_content(
-                model="gemini-2.0-flash",
-                contents=f"請用純文字、不要用Markdown，用一句話（100字）回答：{user_input}",
-                config=ai_config,
-            )
-            info = response.text.replace("**", "").replace("##", "").replace("###", "")
-            if len(info) > 60:
-                info = info[:60] + "..."
-        except Exception as e:
-            info = f"AI 發生錯誤：{str(e)}"
+        import time
+        info = "AI 目前繁忙，請稍後再試。"
+        for i in range(3):  # 最多重試3次
+            try:
+                c = genai.Client(api_key=os.environ.get("GEMINI_API_KEY"))
+                ai_config = types.GenerateContentConfig(max_output_tokens=400)
+                response = c.models.generate_content(
+                    model="gemini-1.5-flash",
+                    contents=f"請用純文字、不要用Markdown，用一句話（50字內）回答：{user_input}",
+                    config=ai_config,
+                )
+                info = response.text.replace("**", "").replace("##", "").replace("###", "")
+                if len(info) > 60:
+                    info = info[:60] + "..."
+                break  # 成功就跳出
+            except Exception as e:
+                if i < 2:
+                    time.sleep(2)  # 等2秒再重試
+                else:
+                    info = "AI 目前繁忙，請稍後再試。"
 
     else:
         info = "抱歉，我不太理解您的問題，請問您想查詢哪種分級的電影呢？"
