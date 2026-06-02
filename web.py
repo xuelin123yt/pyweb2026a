@@ -159,22 +159,22 @@ def webhook3():
         user_input = req["queryResult"]["queryText"]
         import time
         info = "AI 目前繁忙，請稍後再試。"
-        for i in range(3):  # 最多重試3次
+        for i in range(3):
             try:
                 c = genai.Client(api_key=os.environ.get("GEMINI_API_KEY"))
                 ai_config = types.GenerateContentConfig(max_output_tokens=400)
                 response = c.models.generate_content(
                     model="gemini-3.1-flash-lite",
-                    contents=f"請用純文字、不要用Markdown，用一句話（50字內）回答：{user_input}",
+                    contents=f"請用純文字、不要用Markdown，用繁體中文100字以內回答：{user_input}",
                     config=ai_config,
                 )
-                info = response.text.replace("**", "").replace("##", "").replace("###", "")
-                if len(info) > 60:
-                    info = info[:60] + "..."
-                break  # 成功就跳出
+                info = response.text.replace("**", "").replace("##", "").replace("###", "").replace("*", "").replace("#", "").replace("`", "")
+                if len(info) > 100:
+                    info = info[:100] + "..."
+                break
             except Exception as e:
                 if i < 2:
-                    time.sleep(2)  # 等2秒再重試
+                    time.sleep(2)
                 else:
                     info = "AI 目前繁忙，請稍後再試。"
 
